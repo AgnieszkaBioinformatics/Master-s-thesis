@@ -56,6 +56,11 @@ for (df in df_list) {
 rownames(combined) <- combined$Geneid
 combined$Geneid <- NULL
 
+# saving
+outdir <- "C:\\Users\\aurin\\Desktop\\magisterka\\deseq_v2\\short\\"
+setwd(outdir)
+write.csv(combined, 'combined_3h1_lhp1.csv')
+
 
 ##### PCA on all samples ######
 colors_sample <- data.frame(samples = colnames(combined),
@@ -91,6 +96,8 @@ ggplot(pca_df, aes(x = PC1, y = PC2, color = names)) +
 ###########
 
 
+####### DEG #######
+
 
 coldata_3h1 <- data.frame(cells = colnames(combined[,c(1:3, 10:12)]),
                           state = c("3h1", "3h1", "3h1",
@@ -111,13 +118,25 @@ rownames(coldata_Ihp1) <- coldata_Ihp1$cells
 rownames(coldata_Ihp1_3h1) <- coldata_Ihp1_3h1$cells
 
 coldata_all <- data.frame(cells = colnames(combined),
-                          state = c("3h1", "3h1", "3h1",
+                          samples = c("3h1_2", "3h1_3", "3h1_4",
+                                      "Ihp1_1", "Ihp1_3", "Ihp1_4",
+                                      "Ihp1_3h1_2", "Ihp1_3h1_3", "Ihp1_3h1_4",
+                                      "WT_1", "WT_3", "WT_4"),
+                          
+                          genotype = c("3h1", "3h1", "3h1",
                                     "Ihp1", "Ihp1", "Ihp1",
                                     "Ihp1_3h1", "Ihp1_3h1", "Ihp1_3h1",
-                                    "WT", "WT", "WT"))
+                                    "WT", "WT", "WT"),
+                          
+                          replicate = c("2", "3", "4", 
+                                        "1", "3", "4",
+                                        "2", "3", "4",
+                                        "1", "3", "4"))
+
+
 rownames(coldata_all) <- coldata_all$cells
 
-### DESeq object ###
+# DESeq object 
 
 dds_3h1 <- DESeqDataSetFromMatrix(countData = combined[,c(1:3, 10:12)],
                                   colData = coldata_3h1,
@@ -133,17 +152,99 @@ dds_Ihp1_3h1 <- DESeqDataSetFromMatrix(countData = combined[,c(7:9, 10:12)],
 
 dds <- DESeqDataSetFromMatrix(countData = combined,
                               colData = coldata_all,
-                              design = ~ state)
+                              design = ~ genotype)
 
 
-lhp1dir <- "C:\\Users\\aurin\\Desktop\\magisterka\\deseq_v2\\short\\sig_de_Ihp1.csv"
-lhp1 <- read.csv(lhp1dir)
+### filtering out low counts ###
+keep_3h1 <- rowSums(counts(dds_3h1)) >= 10
+dds_3h1 <- dds_3h1[keep_3h1,]
 
-select <- subset(combined, Geneid %in% lhp1$X)
-select$Geneid <- NULL
-normalized_select <- log(select)
+keep_Ihp1 <- rowSums(counts(dds_Ihp1)) >= 10
+dds_Ihp1 <- dds_Ihp1[keep_Ihp1,]
+
+keep_Ihp1_3h1 <- rowSums(counts(dds_Ihp1_3h1)) >= 10
+dds_Ihp1_3h1 <- dds_Ihp1_3h1[keep_Ihp1_3h1,]
+
+keep_dds <- rowSums(counts(dds)) >= 10
+dds <- dds[keep_dds,]
+
+### stting the reference ###
+dds_3h1$state <- relevel(dds_3h1$state, ref = "WT")
+dds_Ihp1$state <- relevel(dds_Ihp1$state, ref = "WT")
+dds_Ihp1_3h1$state <- relevel(dds_Ihp1_3h1$state, ref = "WT")
+
+dds$genotype <- relevel(dds$genotype, ref = "WT")
+
+### running the analysis
+dds_3h1 <- DESeq(dds_3h1)
+res_3h1 <- results(dds_3h1, alpha = alpha)
+
+dds_Ihp1 <- DESeq(dds_Ihp1)
+res_Ihp1 <- results(dds_Ihp1, alpha = alpha)
+
+dds_Ihp1_3h1 <- DESeq(dds_Ihp1_3h1)
+res_Ihp1_3h1 <- results(dds_Ihp1_3h1, alpha = alpha)
+
+dds <- DESeq(dds) 
+res_dds <- results(dds, alpha = alpha)
+
+# plotting
+plotMA(res_3h1)
+rld_3h1 <- rlog(dds_3h1, blind=FALSE)
+plotPCA(rld_3h1, intgroup=c("state"), ntop = 1000)
+
+plotMA(res_Ihp1)
+rld_Ihp1 <- rlog(dds_Ihp1, blind=FALSE)
+plotPCA(rld_Ihp1, intgroup=c("state"), ntop = 1000)
+
+plotMA(res_Ihp1_3h1)
+rld_Ihp1_3h1 <- rlog(dds_Ihp1_3h1, blind = FALSE)
+plotPCA(rld_Ihp1_3h1, intgroup=c("state"), ntop = 1000)
+
+
+# saving results
+
+res_df_3h1 <- as.data.frame(res_3h1)
+write.csv(res_df_3h1, 'res_df_3h1.csv')
+sig_3h1 <- res_df_3h1[which(res_df_3h1$padj <= 0.05),] 
+write.csv(sig_3h1, 'sig_de_3h1.csv')
+
+res_df_Ihp1 <- as.data.frame(res_Ihp1)
+write.csv(res_df_Ihp1, 'res_df_Ihp1.csv')
+sig_Ihp1 <- res_df_Ihp1[which(res_df_Ihp1$padj <= 0.05),] 
+write.csv(sig_Ihp1, 'sig_de_Ihp1.csv')
+
+res_df_Ihp1_3h1 <- as.data.frame(res_Ihp1_3h1)
+write.csv(res_df_Ihp1_3h1, 'res_df_Ihp1_3h1.csv')
+sig_Ihp1_3h1 <- res_df_Ihp1_3h1[which(res_df_Ihp1_3h1$padj <= 0.05),] 
+write.csv(sig_Ihp1_3h1, 'sig_de_Ihp1_3h1.csv')
+
+
+
+
+                        ######## lhp1 profile clustering #########
+
+#lhp1dir <- "C:\\Users\\aurin\\Desktop\\magisterka\\deseq_v2\\short\\sig_de_Ihp1.csv"
+#lhp1 <- read.csv(lhp1dir)
+
+#sig_Ihp1$X <- rownames(sig_Ihp1)
+#combined$Geneid <- rownames(combined)
+#select <- subset(combined, Geneid %in% sig_Ihp1$X)
+#select$Geneid <- NULL
+#select_n <- log(select)
+#select_n <- order(rowMeans(select_n))[1:500]
 
 #df <- as.data.frame(coldata_all[,c("genotype","genotype")])
+select2 <- order(rowMeans(counts(dds_Ihp1,normalized=TRUE)),
+                decreasing=TRUE)[1:500]
 
-pheatmap(select, cluster_rows=TRUE, show_rownames=FALSE,
-         cluster_cols=TRUE, annotation_col=coldata_all)
+rld <- rlog(dds)
+
+df <- as.data.frame(colData(dds)[,c("samples", "genotype")])
+
+pheatmap(assay(rld)[select2, ], cluster_rows=TRUE, show_rownames=FALSE,
+         cluster_cols=TRUE, annotation_col=df)
+
+
+
+
