@@ -7,7 +7,7 @@ library(pheatmap)
 
 alpha <- 0.05
 
-### reading in the data and preparing for DESEQ ###
+                      ### reading in the data and preparing for DESEQ ###
 outdir <- "C:\\Users\\aurin\\Desktop\\magisterka\\counts_v2\\counts_gene"
 setwd(outdir)
 samples <- c('3h1_2_sorted_s', '3h1_3_sorted_s', '3h1_4_sorted_s', 
@@ -61,8 +61,13 @@ outdir <- "C:\\Users\\aurin\\Desktop\\magisterka\\deseq_v2\\short\\"
 setwd(outdir)
 write.csv(combined, 'combined_3h1_lhp1.csv')
 
+combined <- read.csv('combined_3h1_lhp1.csv')
+rownames(combined) <- combined$X
+combined$X <- NULL
 
-##### PCA on all samples ######
+
+
+                          ##### PCA on all samples ######
 colors_sample <- data.frame(samples = colnames(combined),
                             names = c("3h1", "3h1", "3h1",
                                       "lhp1", "lhp1", "lhp1",
@@ -96,7 +101,7 @@ ggplot(pca_df, aes(x = PC1, y = PC2, color = names)) +
 ###########
 
 
-####### DEG #######
+                                  ####### DEG #######
 
 
 coldata_3h1 <- data.frame(cells = colnames(combined[,c(1:3, 10:12)]),
