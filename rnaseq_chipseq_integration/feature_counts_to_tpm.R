@@ -58,3 +58,9 @@ for (df in df_samples) {
   updated_df <- calculate_tpm(current_df)
   assign(df, updated_df)
 }
+
+outdir <- "C:\\Users\\aurin\\Desktop\\magisterka\\3h1_lhp1\\counts_v2\\counts_gene\\tpm\\"
+
+for (s in df_samples) {
+  write.table(s, paste0(outdir, s), sep="\t")
+}
