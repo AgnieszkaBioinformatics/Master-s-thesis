@@ -58,7 +58,7 @@ rownames(combined) <- combined$Geneid
 combined$Geneid <- NULL
 
 # saving
-outdir <- "C:\\Users\\aurin\\Desktop\\magisterka\\deseq_v2\\short\\"
+outdir <- "C:\\Users\\aurin\\Desktop\\magisterka\\3h1_lhp1\\dge\\v3"
 setwd(outdir)
 write.csv(combined, 'combined_3h1_lhp1.csv')
 
@@ -87,7 +87,7 @@ pca_df$samples <- rownames(pca_df)
 # Merge with colors_sample data frame to get color groups
 pca_df <- merge(pca_df, colors_sample, by = "samples")
 
-# Plot PCA with ggplot2
+# Plot PCA with ggplot2   -----------------> coś tu nie działa
 ggplot(pca_df, aes(x = PC1, y = PC2, color = names)) +
   geom_point(size = 3) +
   labs(title = "PCA Plot of 3h1, lhp1, lhp1_3h1, and wt",
@@ -142,7 +142,7 @@ coldata_all <- data.frame(cells = colnames(combined),
 
 rownames(coldata_all) <- coldata_all$cells
 
-# DESeq object 
+## DESeq object 
 
 dds_3h1 <- DESeqDataSetFromMatrix(countData = combined[,c(1:3, 10:12)],
                                   colData = coldata_3h1,
@@ -156,6 +156,7 @@ dds_Ihp1_3h1 <- DESeqDataSetFromMatrix(countData = combined[,c(7:9, 10:12)],
                                        colData = coldata_Ihp1_3h1,
                                        design = ~ state)
 
+# on all data
 dds <- DESeqDataSetFromMatrix(countData = combined,
                               colData = coldata_all,
                               design = ~ genotype)
@@ -174,7 +175,7 @@ dds_Ihp1_3h1 <- dds_Ihp1_3h1[keep_Ihp1_3h1,]
 keep_dds <- rowSums(counts(dds)) >= 10
 dds <- dds[keep_dds,]
 
-### stting the reference ###
+### setting the reference ###
 dds_3h1$state <- relevel(dds_3h1$state, ref = "WT")
 dds_Ihp1$state <- relevel(dds_Ihp1$state, ref = "WT")
 dds_Ihp1_3h1$state <- relevel(dds_Ihp1_3h1$state, ref = "WT")
@@ -194,7 +195,7 @@ res_Ihp1_3h1 <- results(dds_Ihp1_3h1, alpha = alpha, lfcThreshold = lfcThreshold
 dds <- DESeq(dds) 
 res_dds <- results(dds, alpha = alpha, lfcThreshold = lfcThreshold)
 
-# plotting
+# plotting (only single mutants)
 plotMA(res_3h1)
 rld_3h1 <- rlog(dds_3h1, blind=FALSE)
 plotPCA(rld_3h1, intgroup=c("state"), ntop = 1000)
@@ -206,6 +207,13 @@ plotPCA(rld_Ihp1, intgroup=c("state"), ntop = 1000)
 plotMA(res_Ihp1_3h1)
 rld_Ihp1_3h1 <- rlog(dds_Ihp1_3h1, blind = FALSE)
 plotPCA(rld_Ihp1_3h1, intgroup=c("state"), ntop = 1000)
+
+
+# plot all data
+rld_all <- rlog(dds, blind = FALSE)
+plotPCA(rld_all, intgroup=c("genotype"), ntop = 1000)
+
+#plotCounts(dds, gene="AT1G06760", intgroup="genotype") -> nic odkrywczego, lepiej heatmape
 
 
 # saving results
@@ -230,27 +238,23 @@ write.csv(sig_Ihp1_3h1, 'sig_de_Ihp1_3h1.csv')
 
                         ######## lhp1 profile clustering #########
 
-#lhp1dir <- "C:\\Users\\aurin\\Desktop\\magisterka\\deseq_v2\\short\\sig_de_Ihp1.csv"
-#lhp1 <- read.csv(lhp1dir)
-
-#sig_Ihp1$X <- rownames(sig_Ihp1)
-sig_Ihp1$Geneid <- rownames(sig_Ihp1)
 count <- counts(dds)
 count <- as.data.frame(count)
-select <- subset(count, rownames(count) %in% sig_Ihp1$Geneid)
-#select$Geneid <- NULL
-select_n <- log(select)
-#select_n <- order(rowMeans(select_n))[1:500]
 
-#df <- as.data.frame(coldata_all[,c("genotype","genotype")])
-#select2 <- order(rowMeans(counts(dds_Ihp1,normalized=TRUE)),
-                #decreasing=TRUE)[1:500]
-#rld <- rlog(dds)
+size_sum(count)   # "[26,137 × 12]"
+## read in lhp1
+sig_lhp1 <- read.csv("sig_de_Ihp1.csv")
+
+### select counts for genes differentially expressed in lhp1
+select <- subset(count, rownames(count) %in% sig_lhp1$X)    # "[140 × 12]"
+selected_genes <- rownames(select)
 
 df <- as.data.frame(colData(dds)[,c("samples", "genotype")])
 
-pheatmap(select, cluster_rows=TRUE, show_rownames=FALSE,
-         cluster_cols=TRUE, annotation_col=df)
+pheatmap(assay(rlog(dds))[selected_genes,], cluster_rows=TRUE, show_rownames=FALSE,
+         cluster_cols=TRUE, show_colnames = FALSE, annotation_col=df, scale="row")
+
+
 
 
 
